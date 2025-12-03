@@ -1,20 +1,101 @@
 
   <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Nokia Secure MVP Design</title>
-      <!-- Google Analytics -->
-      <script async src="https://www.googletagmanager.com/gtag/js?id=G-2SZEJD8YDC"></script>
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-2SZEJD8YDC');
-      </script>
-    </head>
+  <html lang="en"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nokia Secure MVP Design</title>
 
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2SZEJD8YDC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-2SZEJD8YDC', { 'send_page_view': true });
+  </script>
+
+  <!-- A/B variant & event tracking for Nokia Secure MVP -->
+  <script>
+    (function () {
+      function readVariant() {
+        try {
+          const p = new URLSearchParams(window.location.search);
+          const v = (p.get('variant') || 'A').toUpperCase();
+          return v === 'B' ? 'B' : 'A';
+        } catch (e) {
+          return 'A';
+        }
+      }
+
+      const VARIANT = readVariant();
+      if (typeof gtag === 'function') {
+        gtag('event', 'variant_view', { variant: VARIANT });
+      }
+
+      if (!sessionStorage.getItem('nokia_dlm_start_ts')) {
+        sessionStorage.setItem('nokia_dlm_start_ts', String(performance.now()));
+      }
+
+      window.NOKIA_SECURE_TRACK = {
+        variant: VARIANT,
+        dlmActivated: function () {
+          try {
+            if (typeof gtag === 'function') {
+              gtag('event', 'dlm_activated', { variant: VARIANT });
+            }
+          } catch (e) {}
+        },
+        setupComplete: function () {
+          try {
+            const raw = sessionStorage.getItem('nokia_dlm_start_ts');
+            const start = raw ? parseFloat(raw) : performance.now();
+            const timeSec = Math.max(0, (performance.now() - start) / 1000);
+            if (typeof gtag === 'function') {
+              gtag('event', 'setup_complete', {
+                variant: VARIANT,
+                time_to_complete_seconds: Math.round(timeSec * 100) / 100
+              });
+            }
+            sessionStorage.removeItem('nokia_dlm_start_ts');
+          } catch (e) {}
+        }
+      };
+
+      function attachAutoListeners() {
+        const allButtons = Array.from(document.querySelectorAll('button,a[role="button"]'));
+        const findByText = (regex) =>
+          allButtons.find(b => (b.innerText || b.textContent || '').trim().match(regex));
+
+        const dlmBtn = document.getElementById('dlm-button') || findByText(/daily life|enable daily|enable/i);
+        if (dlmBtn) {
+          dlmBtn.addEventListener('click', function () {
+            if (window.NOKIA_SECURE_TRACK && window.NOKIA_SECURE_TRACK.dlmActivated) {
+              window.NOKIA_SECURE_TRACK.dlmActivated();
+            }
+          }, { once: false });
+        }
+
+        const completeBtn = document.getElementById('setup-complete-btn') || findByText(/finish|done|get started|complete setup|start using/i);
+        if (completeBtn) {
+          completeBtn.addEventListener('click', function () {
+            if (window.NOKIA_SECURE_TRACK && window.NOKIA_SECURE_TRACK.setupComplete) {
+              window.NOKIA_SECURE_TRACK.setupComplete();
+            }
+          }, { once: true });
+        }
+      }
+
+      let attempts = 0;
+      function tryAttachLoop() {
+        attempts += 1;
+        attachAutoListeners();
+        if (attempts < 10) setTimeout(tryAttachLoop, 700);
+      }
+      tryAttachLoop();
+    })();
+  </script>
+  <!-- End A/B tracking script -->
+</head>
     <body>
       <div id="root"></div>
       <script type="module" src="/src/main.tsx"></script>
