@@ -1,23 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nokia Secure MVP Design</title>
 
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Nokia Secure MVP Design</title>
-      <!-- Google Analytics -->
-      <script async src="https://www.googletagmanager.com/gtag/js?id=G-2SZEJD8YDC"></script>
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-2SZEJD8YDC');
-      </script>
-    </head>
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-2SZEJD8YDC"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){ dataLayer.push(arguments); }
+      gtag("js", new Date());
+      gtag("config", "G-2SZEJD8YDC");
 
-    <body>
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-    </body>
-  </html>
-  
+      /* ------------------------------------------
+         A/B TEST TRACKING LOGIC
+         ------------------------------------------ */
+
+      // Extract ?variant=A or ?variant=B from the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const variant = urlParams.get("variant");
+
+      // Record start time for time_to_complete_seconds
+      window.__startTime = performance.now();
+
+      // Global tracking object
+      window.NOKIA_SECURE_TRACK = {
+        variant: variant,
+
+        // CTR event (Daily Life Mode activated)
+        dlmActivated() {
+          gtag("event", "dlm_activated", {
+            variant: this.variant
+          });
+        },
+
+        // Completion event (Conversion + Time to complete)
+        setupComplete() {
+          const end = performance.now();
+          const seconds = (end - window.__startTime) / 1000;
+
+          gtag("event", "setup_complete", {
+            variant: this.variant,
+            time_to_complete_seconds: seconds
+          });
+        }
+      };
+
+      // Fire variant_view on page load
+      gtag("event", "variant_view", {
+        variant: variant
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
